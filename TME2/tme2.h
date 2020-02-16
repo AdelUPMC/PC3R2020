@@ -11,6 +11,7 @@
 #include<unistd.h>
 #include<string.h>
 #include<pthread.h>
+#include <fthread.h>
 
 #define NB_THREADS 8
 #define SIZEFIFO 42
@@ -43,14 +44,12 @@ typedef struct s_producteur
 	fifo		*tapis_prod;
 	const char	*nom;
 	int		cible;
-//	ft_scheduler_t 	*schedtprod;
 }	t_producteur;
 
 typedef struct s_consommateur
 {
 	fifo	*tapis_cons;
 	int		ref;
-//	ft_scheduler_t *schedtcons;
 }			t_consommateur;
 
 
@@ -77,8 +76,8 @@ char	*defile(fifo *f);
 
 
 //Prdcons.c
-void *consommateur(void *args);
-void *producteur(void *args);
+void consommateur(void *args);
+void producteur(void *args);
 
 // utile.c
 char*	strcjoin(char *w1, char*w2, char c);

@@ -1,4 +1,4 @@
-#include "tme1.h"
+#include "tme2.h"
 
 fifo*	make_fifo(int size)
 {
