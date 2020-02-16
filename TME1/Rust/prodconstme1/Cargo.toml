@@ -1,0 +1,7 @@
+[package]
+name = "prodconstme1"
+version = "0.1.0"
+authors = ["El Amraoui Adel <Elamraoui.Adel@hotmail.com>"]
+edition = "2018"
+
+[dependencies]
