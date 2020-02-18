@@ -55,6 +55,7 @@ int		isEmpty(fifo *f)
 
 void	enfile(fifo* f, char* element)
 {
+	printf("Enfile %s\n", element);
 	if (f->size == f->sizemax)
 	{
 		printf("Plein !!\n");
@@ -69,6 +70,7 @@ void	enfile(fifo* f, char* element)
 	f->tapis[f->end] = strdup(element);
 	f->end+=1;
 	f->size+=1;
+	printf("Enfile fini !!!\n");
 }
 
 char*	defile(fifo *f)
@@ -81,7 +83,7 @@ char*	defile(fifo *f)
 		return 0x0;
 	}
 	res = f->tapis[f->start];
-	free(f->tapis[f->start]);
+	//free(f->tapis[f->start]);
 
 	f->tapis[f->start] = 0x0;
 	f->start++;

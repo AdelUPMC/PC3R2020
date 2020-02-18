@@ -83,3 +83,48 @@ void producteur(void *args);
 char*	strcjoin(char *w1, char*w2, char c);
 void		error_malloc(const char *s);
 #endif
+
+/*
+void	bigtest()
+{
+	fifo *f= make_fifo(SIZEFIFO);
+	pthread_t *prod;
+	pthread_t *cons;
+	t_consommateur  conso[NBCONS];
+	t_producteur  produ[NBPROD];
+	int i;
+	char *str = calloc(10,1);
+
+
+	if (!(prod = (pthread_t*)malloc(sizeof(pthread_t) * NBPROD)))
+		error_malloc("bigtest");
+	if (!(cons = (pthread_t*)malloc(sizeof(pthread_t) * NBCONS)))
+		error_malloc("bigtest");
+
+//	printf("create\n");
+	for (i = 0; i < NBPROD; i++) {
+		sprintf(str, "fruit%d", i);
+		produ[i] = make_producteur(f, str, CIBLE);
+		pthread_create(&prod[i],NULL,producteur,(void*)(&produ[i]));
+	}
+	for (i = 0; i < NBCONS; i++)
+	{
+		conso[i] = make_consommateur(f, i);
+		pthread_create(&prod[i],NULL,consommateur,(void*)(&conso[i]));
+	}
+
+
+	for (i = 0; i < NBCONS; i++)
+		pthread_join(cons[i], NULL);
+	for (i = 0; i < NBPROD; i++)
+		pthread_join(prod[i], NULL);
+
+
+	printf("finish\n");
+	free_fifo(f);
+	free(prod);
+	free(cons);
+	free(str);
+}*/
+
+

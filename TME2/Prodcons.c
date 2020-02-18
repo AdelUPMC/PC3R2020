@@ -4,8 +4,6 @@ int CPT; // partagé par les consommateurs et les messagers, donc à protéger a
 //apthread_mutex_t cptmut=PTHREAD_MUTEX_INITIALIZER;
 
 
-//ft_thread_t    consommateurs[NB_CONS], producteurs[NB_CONS],messagers[NB_MESSAGERS];
-ft_scheduler_t	schedcons, schedprod;
 ft_event_t      peut_produire_prod,peut_consommer_cons,peut_produire_msg,peut_consommer_msg;
 /*pas besoin de mutex pour les journaux journalProd et journalCons
 car ils ne sont pas partagés entre thread liées et non liées*/
@@ -73,7 +71,7 @@ t_producteur	make_producteur(fifo *tapis_prod, char *nom, int cible, ft_schedule
 	p.tapis_prod = tapis_prod;
 	p.nom = strdup(nom);
 	p.cible = cible;
-	ft_thread_link(schedtprod);
+	//ft_thread_link(schedtprod);
 	return (p);
 }
 
@@ -92,7 +90,7 @@ t_consommateur	make_consommateur(fifo *tapis_cons, int ref, ft_scheduler_t sched
 	t_consommateur t;
 	t.tapis_cons = tapis_cons;
 	t.ref = ref;
-	ft_thread_link(schedtcons);
+	//ft_thread_link(schedtcons);
 	return (t);
 }
 
@@ -113,7 +111,7 @@ void producteur(void *conso)
 	//char *enfilesuccess;
 	int produits = 0;
 
-	printf("GO\n");
+//	printf("GO producteurs\n");
 	while(produits < p.cible)
 	{
 		if (isfull(p.tapis_prod))
@@ -131,17 +129,20 @@ void producteur(void *conso)
 	//	free(enfilesuccess);
 		produits++;
 		ft_thread_generate(peut_consommer_msg);//réveil un messager en attente sur le scheduler de production
+		printf("peu consommateur\n");
 		ft_thread_cooperate();
 	}
+	printf("Un producteur a terminer son travail\n");
 	free(str);
 }
-
+int debug = 0;
 void consommateur(void *conso)
 {
 	t_consommateur c = void_to_consommateur(conso);
 	char *s;
 	//char *defilesuccess;
 
+//	printf("Go (consommateur)\n");
 	while(CPT > 0)
 	{
 		if (isEmpty(c.tapis_cons))
@@ -173,15 +174,23 @@ void _messager(void *conso)
 
 	while(CPT > 0)
 	{
+		ft_thread_unlink();
 		ft_thread_link(*m.schedtprod);
 		if (isEmpty(m.tapis_prod))
 		{
 			printf("tapis de production vide\n");
 			ft_thread_await(peut_consommer_msg);
+			printf("reveille !!\n");
 		}
+	else
+	{
+			printf("NON vide\n");
 		//pas besoin de mutex car il est forcément lié au scheduler schedprod à ce moment là
 		m.paquet = defile(m.tapis_prod);
+		if (!m.paquet)
+			printf("STTOP\n");
 		ft_thread_generate(peut_produire_prod);// réveil des producteurs en attente sur (tapis_prod plein)
+		printf("debug %d\n",debug++);
 		ft_thread_unlink();
 		//defilesuccess=strcjoin("Messager: defile un paquet dans le tapis de production: ",m.paquet,' ');
 		/*debut écriture du trajet*/
@@ -213,51 +222,9 @@ void _messager(void *conso)
 		ft_thread_generate(peut_consommer_cons);// réveil des consommateurs en attente sur (tapis_cons vide)
 		ft_thread_unlink();
 	}
+	}
 	printf("messager %d a fini sa vie\n", m.ref);
 }
-/*
-void	bigtest()
-{
-	fifo *f= make_fifo(SIZEFIFO);
-	pthread_t *prod;
-	pthread_t *cons;
-	t_consommateur  conso[NBCONS];
-	t_producteur  produ[NBPROD];
-	int i;
-	char *str = calloc(10,1);
-
-
-	if (!(prod = (pthread_t*)malloc(sizeof(pthread_t) * NBPROD)))
-		error_malloc("bigtest");
-	if (!(cons = (pthread_t*)malloc(sizeof(pthread_t) * NBCONS)))
-		error_malloc("bigtest");
-
-//	printf("create\n");
-	for (i = 0; i < NBPROD; i++) {
-		sprintf(str, "fruit%d", i);
-		produ[i] = make_producteur(f, str, CIBLE);
-		pthread_create(&prod[i],NULL,producteur,(void*)(&produ[i]));
-	}
-	for (i = 0; i < NBCONS; i++)
-	{
-		conso[i] = make_consommateur(f, i);
-		pthread_create(&prod[i],NULL,consommateur,(void*)(&conso[i]));
-	}
-
-
-	for (i = 0; i < NBCONS; i++)
-		pthread_join(cons[i], NULL);
-	for (i = 0; i < NBPROD; i++)
-		pthread_join(prod[i], NULL);
-
-
-	printf("finish\n");
-	free_fifo(f);
-	free(prod);
-	free(cons);
-	free(str);
-}*/
-
 
 
 
@@ -268,9 +235,9 @@ void		test()
 	int		i;
 	char	*str = calloc(42, 1);
 
-	t_consommateur  conso[NBCONS];
-	t_producteur  produ[NBPROD];
-	t_messager mess[NBMESSAGERS];
+	t_consommateur conso[NBCONS];
+	t_producteur	produ[NBPROD];
+	t_messager		mess[NBMESSAGERS];
 
 	ft_thread_t *prod;
 	ft_thread_t *cons;
@@ -294,19 +261,19 @@ void		test()
 	for (i = 0; i < NBPROD; i++) {
 		sprintf(str, "fruit%d", i);
 		printf("%s\n", str);
-		produ[i] = make_producteur(tapisprod, str, CIBLE,schedprod);
-		prod[i]=ft_thread_create(schedprod, producteur,NULL,(void*)(&produ[i]));
+		produ[i] = make_producteur(tapisprod, str, CIBLE,schedtprod);
+		prod[i] = ft_thread_create(schedtprod, producteur,NULL,(void*)(&produ[i]));
 	}
 
 	for (i = 0; i < NBCONS; i++)
 	{
-		conso[i] = make_consommateur(tapiscons, i,schedcons);
-		cons[i]=ft_thread_create(schedcons, consommateur,NULL,(void*)(&conso[i]));
+		conso[i] = make_consommateur(tapiscons, i,schedtcons);
+		cons[i]=ft_thread_create(schedtcons, consommateur,NULL,(void*)(&conso[i]));
 	}
 
 	for (i = 0; i < NBMESSAGERS; i++)
 	{
-		mess[i] = make_messager(i,tapisprod,tapiscons,schedprod,schedcons);
+		mess[i] = make_messager(i,tapisprod,tapiscons,schedtprod,schedtcons);
 		msg[i]=ft_thread_create(schedtprod,_messager,NULL,(void*)(&mess[i]));
 	}
 /*
@@ -319,9 +286,13 @@ void		test()
 	for (i = 0; i < NBMESSAGERS; i++)
 		ft_thread_join(msg[i]);
 */
-	ft_scheduler_start (schedtprod);
-	ft_scheduler_start (schedtcons);
+	ft_scheduler_start(schedtprod);
+	ft_scheduler_start(schedtcons);
+	//ft_thread_cooperate();
 	printf("START\n");
+	sleep(1);
+	ft_exit();
+	//ft_exit();
 	free_fifo(tapisprod);
 	free_fifo(tapiscons);
 }
