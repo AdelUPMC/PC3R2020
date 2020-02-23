@@ -6,26 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	//         "strings"
+	"time"
 )
-
-/*
-func lecteur () {}w
-func  travailleur () {}
-func  serveur () {}
-func reducteur(){}
-
-type paquet struct{
-	trip_id string
-	arrival_time string
-	departure_time string
-	stop_id string
-	stop_sequence string
-	stop_headsign int
-	pickup_type string
-	drop_off_type int
-	shape_dist_traveled int
-}*/
 
 type paquet struct {
 	arrivee string
@@ -37,38 +19,28 @@ type message struct {
 	content paquet
 }
 
-/*
-type MyBox struct {
-	Items []MyBoxItem
-}
-*/
-
-func travailleur(cl chan string, cs chan message, cp chan paquet, fin chan int) {
-	for line := range cl {
-		fmt.Println("reçu ", line[0])
+func travailleur(chanLecteur chan string, chanServeur chan message, chanReducteur chan paquet, fin chan int) {
+	for line := range chanLecteur {
+		fmt.Println("reçu ", line)
 		/*
-			convert line to paquet
-
+			TODO convert line to paquet
 		*/
-		p := paquet{depart: "19:20:00", arrivee: "19:30:00", arret: 0}
-		csout := make(chan paquet)
-		m := message{content: p, cout: csout}
 
-		cs <- m // envoi au serveur
+		p := paquet{depart: "19:20:00", arrivee: "19:30:00", arret: 0} // pour le test a supp
+		chanStoTravailleur := make(chan paquet)
+		m := message{content: p, cout: chanStoTravailleur}
 
-		pnew := <-csout // recoit du serveur
+		chanServeur <- m // envoi au serveur
+
+		pnew := <-chanStoTravailleur // recoit du serveur
 		fmt.Println("Travailleur: arret =", string(pnew.arret))
-
 	}
 	fmt.Println("travailleur a fini")
 	fin <- 0
-
 }
 
 func lecteur(filename string, cl chan string) {
 	flag.Parse()
-	//filename =
-	//fmt.Println(filename)
 	fmt.Println("Hello World")
 
 	file, err := os.Open(filename)
@@ -101,6 +73,9 @@ func serveur(cs chan message, fin chan int) {
 			break
 		case mess := <-cs:
 			go func(m message) {
+				/*
+					TODO Calcul du temp d'arret a partir de 2 string
+				*/
 				m.content.arret = 600
 				fmt.Println("Serveur: content =", m.content.arret)
 				m.cout <- m.content
@@ -130,33 +105,34 @@ func reducteur(cp chan paquet, out chan int, findutemps chan int) {
 }
 
 func main() {
-	//read("stop_times.txt")
-	cl := make(chan string)
-	cs := make(chan message)
-	cp := make(chan paquet)
+	chanLtoTravailleur := make(chan string)
+	chanTtoserveur := make(chan message)
+	chanTtoReducteur := make(chan paquet)
 	finTravailleur := make(chan int)
 	finServeur := make(chan int)
 	finReducteur := make(chan int)
 	finalResultat := make(chan int)
-
 	nbtravailleur := 2
-	go func() { lecteur("extrait.txt", cl) }()
+
+	/*
+		TODO donner le fichier en parametre
+	*/
+
+	go func() { lecteur("extrait.txt", chanLtoTravailleur) }()
 	for i := 1; i <= nbtravailleur; i++ {
-		go func() { travailleur(cl, cs, cp, finTravailleur) }()
+		go func() { travailleur(chanLtoTravailleur, chanTtoserveur, chanTtoReducteur, finTravailleur) }()
 	}
-	go func() { serveur(cs, finServeur) }()
-	go func() { reducteur(cp, finalResultat, finReducteur) }()
+	go func() { serveur(chanTtoserveur, finServeur) }()
+	go func() { reducteur(chanTtoReducteur, finalResultat, finReducteur) }()
 
 	for i := 1; i <= nbtravailleur; i++ {
 		<-finTravailleur
-	}
-	finServeur <- 0
-	finReducteur <- 0
-	fmt.Println("FIN")
-	/*sleep du temps précisé en ligne de commande*/
-	//TODO
-	/*envoi du signal après le sleep*/
+	} // fini qu'une fois aue tous les travailleurs ont terminer
 
+	finServeur <- 0
+	fmt.Println("Calcul ...")
+	time.Sleep(time.Millisecond * 7500)
+	finReducteur <- 0
 	moyenne := <-finalResultat
-	fmt.Println("Serveur: content =", string(moyenne))
+	fmt.Println("Fin Serveur: content =", string(moyenne))
 }
