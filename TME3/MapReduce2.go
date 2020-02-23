@@ -124,11 +124,12 @@ func main() {
 	finReducteur := make(chan int)
 	finalResultat := make(chan int)
 	nbtravailleur := 4
-	/*
-		TODO donner le fichier en parametre
-	*/
+	filename := "stop_times.txt"
+	if len(os.Args) > 1 {
+		filename = os.Args[1]
+	}
 
-	go func() { lecteur("stop_times.txt", chanLtoTravailleur) }()
+	go func() { lecteur(filename, chanLtoTravailleur) }()
 	for i := 1; i <= nbtravailleur; i++ {
 		go func() { travailleur(chanLtoTravailleur, chanTtoserveur, chanTtoReducteur, finTravailleur) }()
 	}
