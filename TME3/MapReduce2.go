@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,6 +21,14 @@ type message struct {
 	content paquet
 }
 
+/*
+func getPaquetFromLine(line string) paquet{
+     s := strings.Split(line, ",")
+     p := paquet{depart: s[1], arrivee: s[2], arret: 0}
+     return p
+}
+*/
+
 func travailleur(chanLecteur chan string, chanServeur chan message, chanReducteur chan paquet, fin chan int) {
 	for line := range chanLecteur {
 		fmt.Println("reçu ", line)
@@ -26,7 +36,9 @@ func travailleur(chanLecteur chan string, chanServeur chan message, chanReducteu
 			TODO convert line to paquet
 		*/
 
-		p := paquet{depart: "19:20:00", arrivee: "19:30:00", arret: 0} // pour le test a supp
+		//	str := strings.Split(line, ",")
+		//p := paquet{depart: s[1], arrivee: s[2], arret: 0}
+		p := paquet{depart: "19:28:30", arrivee: "19:30:00", arret: 0} // pour le test a supp
 		chanStoTravailleur := make(chan paquet)
 		m := message{content: p, cout: chanStoTravailleur}
 
@@ -34,6 +46,8 @@ func travailleur(chanLecteur chan string, chanServeur chan message, chanReducteu
 
 		pnew := <-chanStoTravailleur // recoit du serveur
 		fmt.Println("Travailleur: arret =", string(pnew.arret))
+		//		p = pnew.content
+		chanReducteur <- pnew
 	}
 	fmt.Println("travailleur a fini")
 	fin <- 0
@@ -41,7 +55,6 @@ func travailleur(chanLecteur chan string, chanServeur chan message, chanReducteu
 
 func lecteur(filename string, cl chan string) {
 	flag.Parse()
-	fmt.Println("Hello World")
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -64,20 +77,29 @@ func lecteur(filename string, cl chan string) {
 	close(cl)
 }
 
+func dateToNombre(p string) int {
+	s := strings.Split(p, ":")
+	h, _ := strconv.Atoi(s[0])
+	m, _ := strconv.Atoi(s[1])
+	l, _ := strconv.Atoi(s[2])
+	res := l + 60*m + 3600*h
+	return res
+}
+
 func serveur(cs chan message, fin chan int) {
-	fmt.Println("Hello World2")
 	for {
 		select {
 		case <-fin:
-			fmt.Println("C'est fini !!")
 			break
 		case mess := <-cs:
 			go func(m message) {
 				/*
 					TODO Calcul du temp d'arret a partir de 2 string
 				*/
-				m.content.arret = 600
-				fmt.Println("Serveur: content =", m.content.arret)
+				start := dateToNombre(m.content.depart)
+				end := dateToNombre(m.content.arrivee)
+				m.content.arret = end - start
+				//fmt.Println("Serveur: content =", m.content.arret)
 				m.cout <- m.content
 			}(mess)
 		}
@@ -92,19 +114,19 @@ func reducteur(cp chan paquet, out chan int, findutemps chan int) {
 	for {
 		select {
 		case <-findutemps:
-			res := temps_arret / (nbpaquets + 1)
-			fmt.Println("resultat ", res)
+			res := temps_arret / nbpaquets
+			fmt.Println("resultat ", res, nbpaquets)
 			out <- res
 			break
 		case p := <-cp:
 			temps_arret += p.arret
 			nbpaquets++
-			fmt.Println("resultat  reducteur")
 		}
 	}
 }
 
 func main() {
+
 	chanLtoTravailleur := make(chan string)
 	chanTtoserveur := make(chan message)
 	chanTtoReducteur := make(chan paquet)
@@ -113,7 +135,6 @@ func main() {
 	finReducteur := make(chan int)
 	finalResultat := make(chan int)
 	nbtravailleur := 2
-
 	/*
 		TODO donner le fichier en parametre
 	*/
@@ -131,8 +152,9 @@ func main() {
 
 	finServeur <- 0
 	fmt.Println("Calcul ...")
-	time.Sleep(time.Millisecond * 7500)
+	time.Sleep(time.Millisecond * 700)
 	finReducteur <- 0
 	moyenne := <-finalResultat
-	fmt.Println("Fin Serveur: content =", string(moyenne))
+	fmt.Println("Fin Serveur: content =", moyenne/60, "minutes", moyenne%60, "secondes")
+
 }
