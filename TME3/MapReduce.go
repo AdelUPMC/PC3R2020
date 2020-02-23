@@ -5,6 +5,7 @@ package main
          "fmt"
          "io"
          "os"
+         //"time"
 //         "strings"
  )
 
@@ -38,27 +39,8 @@ type  message struct{
 	content paquet
 }
 
-type MyBox struct {
-    Items []MyBoxItem
-}
 
-func travailleur(cl chan string, cs chan message ,fin chan int){
-	line :=<-cl
-	fmt.Println("reçu ",line)
-	/*
-		convert line to paquet
-
-	*/
-	p := paquet{depart:"19:20:00",arrivee:"19:30:00",arret:0}
-	csout:=make(chan paquet)
-	m := message{content :p, cout : csout}
-	cs<-m
-	pnew:=<-csout
-	fmt.Println("Travailleur: arret =",string(pnew.arret))
-	fin<-0
-}
-
-func lecteur(filename string, cl chan string,fin chan int){
+func lecteur(filename string, cl chan string,finlecteur chan int){
 		flag.Parse()
 		//filename =
  	    //fmt.Println(filename)
@@ -73,25 +55,43 @@ func lecteur(filename string, cl chan string,fin chan int){
 
          reader := bufio.NewReader(file)
 
-
+         reader.ReadLine() //skip the first line
          for {
                  line, _, err := reader.ReadLine()
 
                  if err == io.EOF {
-                         break
+                   fmt.Println("fin du fichier ",line)
+                   break;
                  }
                  cl<- string(line)
 
-
          }
-         fin<-0
+         finlecteur<-0
 }
+
+func travailleur(cl chan string, cs chan message ,fin chan int){
+	line :=<-cl
+	fmt.Println("reçu ",line)
+	/*
+		convert line to paquet
+
+	*/
+	p := paquet{depart:"19:20:00",arrivee:"19:30:00",arret:500}
+	csout:=make(chan paquet)
+	m := message{content :p, cout : csout}
+	cs<-m
+	pnew:=<-csout
+	fmt.Println("Travailleur: arret =",pnew.arret)
+	fin<-0
+}
+
+
 func  serveur (cs chan message,fin chan int ) {
-	   fmt.Println("Hello World2")
+	  fmt.Println("Hello World2")
 		mess:=<-cs
 		go func(m message){
 			m.content.arret=600
-			fmt.Println("Serveur: content =",string(m.content.arret))
+			fmt.Println("Serveur: content =",m.content.arret)
 			m.cout <- m.content
 		}(mess)
 
@@ -100,7 +100,7 @@ func  serveur (cs chan message,fin chan int ) {
 }
 
 /*cp: chan de paquets transformés*/
-func reducteur(cp chan paquet,out chan int,findutemps chan int){
+func reducteur(cp chan paquet,out chan int,findutemps chan int,finreducteur chan int ){
   temps_arret :=0
   nbpaquets:=0
   for{
@@ -113,27 +113,38 @@ func reducteur(cp chan paquet,out chan int,findutemps chan int){
       nbpaquets++
     }
   }
+  finreducteur<-0
 }
 
 func main() {
  //read("stop_times.txt")
  cl := make ( chan string)
  cs :=make(chan message)
- fin := make ( chan int)
+ finlecteur := make ( chan int)
+ fintravailleur := make ( chan int)
+ finserveur := make ( chan int)
+ //finreducteur := make ( chan int)
+
+/*
  findutemps := make ( chan int)
  creduct := make ( chan int)
+*/
+
+ go func(){lecteur("stop_times.txt",cl,finlecteur)}()
+ go func(){travailleur(cl,cs,fintravailleur)}()
+ go func(){serveur(cs,finserveur)}()
 
 
- go func(){lecteur("stop_times.txt",cl,fin)}()
- go func(){travailleur(cl,cs,fin)}()
- go func(){serveur(cs,fin)}()
- <-fin
- <-fin
- <-fin
  /*sleep du temps précisé en ligne de commande*/
- //TODO
+//time.Sleep(10 * time.Second)
  /*envoi du signal après le sleep*/
-findutemps<-0
+/*findutemps<-0
 moyenne:=<-creduct
-fmt.Println("Serveur: content =",string(moyenne))
+fmt.Println("moyenne  =",string(moyenne))
+*/
+<-finlecteur
+<-fintravailleur
+//findutemps<-0
+<-finserveur
+//<-reducteur
 }
