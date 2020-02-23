@@ -31,22 +31,14 @@ func getPaquetFromLine(line string) paquet{
 
 func travailleur(chanLecteur chan string, chanServeur chan message, chanReducteur chan paquet, fin chan int) {
 	for line := range chanLecteur {
-		fmt.Println("reçu ", line)
-		/*
-			TODO convert line to paquet
-		*/
-
-		//	str := strings.Split(line, ",")
-		//p := paquet{depart: s[1], arrivee: s[2], arret: 0}
-		p := paquet{depart: "19:28:30", arrivee: "19:30:00", arret: 0} // pour le test a supp
+		str := strings.Split(line, ",")
+		p := paquet{depart: str[1], arrivee: str[2], arret: 0}
 		chanStoTravailleur := make(chan paquet)
 		m := message{content: p, cout: chanStoTravailleur}
 
 		chanServeur <- m // envoi au serveur
 
 		pnew := <-chanStoTravailleur // recoit du serveur
-		fmt.Println("Travailleur: arret =", string(pnew.arret))
-		//		p = pnew.content
 		chanReducteur <- pnew
 	}
 	fmt.Println("travailleur a fini")
@@ -65,6 +57,7 @@ func lecteur(filename string, cl chan string) {
 
 	reader := bufio.NewReader(file)
 
+	reader.ReadLine()
 	for {
 		line, _, err := reader.ReadLine()
 
@@ -72,8 +65,8 @@ func lecteur(filename string, cl chan string) {
 			break
 		}
 		cl <- string(line)
-
 	}
+
 	close(cl)
 }
 
@@ -93,13 +86,9 @@ func serveur(cs chan message, fin chan int) {
 			break
 		case mess := <-cs:
 			go func(m message) {
-				/*
-					TODO Calcul du temp d'arret a partir de 2 string
-				*/
 				start := dateToNombre(m.content.depart)
 				end := dateToNombre(m.content.arrivee)
 				m.content.arret = end - start
-				//fmt.Println("Serveur: content =", m.content.arret)
 				m.cout <- m.content
 			}(mess)
 		}
@@ -134,12 +123,12 @@ func main() {
 	finServeur := make(chan int)
 	finReducteur := make(chan int)
 	finalResultat := make(chan int)
-	nbtravailleur := 2
+	nbtravailleur := 4
 	/*
 		TODO donner le fichier en parametre
 	*/
 
-	go func() { lecteur("extrait.txt", chanLtoTravailleur) }()
+	go func() { lecteur("stop_times.txt", chanLtoTravailleur) }()
 	for i := 1; i <= nbtravailleur; i++ {
 		go func() { travailleur(chanLtoTravailleur, chanTtoserveur, chanTtoReducteur, finTravailleur) }()
 	}
@@ -152,9 +141,9 @@ func main() {
 
 	finServeur <- 0
 	fmt.Println("Calcul ...")
-	time.Sleep(time.Millisecond * 700)
+	time.Sleep(time.Millisecond * 1000)
 	finReducteur <- 0
 	moyenne := <-finalResultat
-	fmt.Println("Fin Serveur: content =", moyenne/60, "minutes", moyenne%60, "secondes")
+	fmt.Println("Resultat finale =", moyenne/60, "minutes", moyenne%60, "secondes")
 
 }
